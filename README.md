@@ -2,13 +2,13 @@
 
 为 [CDUT OBU VLE](https://vle.zycdut.net/) 提供更清晰的测验侧栏和 DeepSeek 辅助答题体验的 Tampermonkey（油猴）脚本。
 
-[安装 v0.3.0](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases/download/v0.3.0/vle-upcoming-quizzes.user.js) · [查看 Release](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases) · [反馈问题](https://github.com/VellowK/CDUTOBU-VLE-Evolved/issues)
+[安装 v0.3.1](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases/download/v0.3.1/CDUTOBU-VLE-Evolved.user.js) · [查看 Release](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases) · [反馈问题](https://github.com/VellowK/CDUTOBU-VLE-Evolved/issues)
 
-> v0.3.0 为预览版。已通过本地模拟测试，尚未完成真实 API Key、油猴扩展和真实 VLE 的联合验证。
+> v0.3.1 为预览版。已通过本地模拟测试，尚未完成真实 API Key、油猴扩展和真实 VLE 的联合验证。
 
 ## 功能
 
-- **独立的 Upcoming Quizzes 面板**：沿用原站灰色模块风格，保留原分类和 Upcoming deadlines；没有 deadline 时测验面板仍显示。
+- **独立的 Upcoming Quizzes 面板**：直接使用原站的模块、标题、正文及链接样式，保留原分类和 Upcoming deadlines；没有 deadline 时测验面板仍显示。“刷新列表”采用与 All modules 一样的右对齐文字链接。
 - **当前课程范围**：扫描 Home、Current modules 及其分页，按链接去重、按开放时间排序，过滤已关闭的测验，不扫描 All modules 或归档课程。
 - **DeepSeek 预设**：地址和模型已配好，填写自己的 API Key 即可使用。
 - **单题解答**：读取当前题干、选项和图片附件，显示答案建议、简短解释和模型自报置信度。
@@ -20,11 +20,11 @@
 ## 安装
 
 1. 在浏览器安装 [Tampermonkey](https://www.tampermonkey.net/)。
-2. 点击上方“安装 v0.3.0”，在油猴安装页检查匹配网站和权限并安装。
+2. 点击上方“安装 v0.3.1”，在油猴安装页检查匹配网站和权限并安装。
 3. 如果浏览器只下载了 `.user.js` 文件，在油猴中新建脚本，将文件全部内容粘贴后保存。
 4. 打开并自行登录 `https://vle.zycdut.net/`，刷新页面。
 
-如果已经安装旧版，请替换或禁用旧脚本，避免同时启用多个副本。脚本中的更新地址指向本仓库 `main` 分支的安装文件。
+如果已经安装旧版，请替换或禁用旧脚本，避免同时启用多个副本。v0.3.1 将名称统一为 **CDUTOBU VLE Evolved**；如果油猴将它识别为新条目，请先停用旧的 **VLE Upcoming Quizzes + DeepSeek**，或在原脚本编辑器中全量替换以保留该条目的 Key。脚本中的更新地址指向本仓库 `main` 分支的安装文件，仓库仍保留旧文件路径以兼容已有更新地址。
 
 ## 使用 DeepSeek
 
@@ -89,7 +89,7 @@ src/
 scripts/build.cjs        # 生成单文件油猴脚本
 tests/deepseek.test.cjs   # Provider 单元测试
 tests/fixtures/          # 仅本地使用的模拟页面和 GM 接口替身
-outputs/vle-upcoming-quizzes.user.js
+outputs/CDUTOBU-VLE-Evolved.user.js
 docs/testing.md          # 验证范围和限制
 LICENSE
 ```
@@ -109,3 +109,4 @@ node tests/fixtures/server.cjs
 ## License
 
 [MIT License](LICENSE) · Copyright (c) 2026 VellowK。允许使用、修改和分发，须保留版权及许可声明；软件按原样提供，不附带担保。
+

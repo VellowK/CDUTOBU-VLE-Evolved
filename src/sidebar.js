@@ -8,24 +8,16 @@
 
   const style = document.createElement('style');
   style.textContent = `
-    #${panelId} { display:block !important; visibility:visible !important;
-      background:#eee; color:#000; border:1px solid #ddd;
-      border-radius:0; margin:0 0 20px; padding:15px 20px; box-shadow:none;
-      font-family:Georgia,"Times New Roman",Times,serif; font-size:14px; line-height:21px; }
-    #${panelId} .vle-quiz-heading { font-size:1.071em; font-weight:400;
-      line-height:1.2; margin:0 0 .5em; padding:0 0 5px; border-bottom:1px solid #d6d6d6; }
-    #${panelId} .vle-quiz-content { padding:0; font-size:inherit; line-height:inherit; }
+    #${panelId} { display:block !important; visibility:visible !important; }
     #${panelId} .vle-quiz-content p { margin:0; }
-    #${panelId} .vle-quiz-note { color:#666; margin-top:8px !important; font-size:.8rem; }
+    #${panelId} .vle-quiz-note { margin-top:8px !important; opacity:.75; }
     #${panelId} .vle-quiz-list { list-style:none; margin:0; padding:0; }
     #${panelId} .vle-quiz-item { margin:0; padding:10px 0; border-bottom:1px solid #d6d6d6; }
     #${panelId} .vle-quiz-item:first-child { padding-top:0; }
     #${panelId} .vle-quiz-item:last-child { border:0; }
-    #${panelId} a { color:#0071b3; overflow-wrap:anywhere; }
-    #${panelId} .vle-quiz-meta { display:block; font-size:12px; line-height:1.5; color:#555; }
-    #${panelId} .vle-quiz-refresh { font:inherit; font-size:12px; margin-top:10px; padding:3px 8px;
-      border:1px solid #bbb; background:#fafafa; color:#333; cursor:pointer; }
-    #${panelId} .vle-quiz-refresh:disabled { cursor:wait; opacity:.6; }
+    #${panelId} a { overflow-wrap:anywhere; }
+    #${panelId} .vle-quiz-meta { display:block; opacity:.8; }
+    #${panelId} .vle-quiz-refresh[aria-disabled="true"] { cursor:wait; opacity:.6; }
   `;
   document.head.append(style);
 
@@ -36,11 +28,11 @@
   panel.innerHTML = `<h2 class="vle-quiz-heading" id="${panelId}-title">Upcoming Quizzes</h2>
     <div class="content vle-quiz-content"><p class="vle-quiz-status" role="status" aria-live="polite">正在检查测验…</p>
     <ul class="vle-quiz-list"></ul><p class="vle-quiz-note"></p>
-    <button class="vle-quiz-refresh" type="button">刷新列表</button></div>`;
+    <div class="more-link"><a class="vle-quiz-refresh" href="#${panelId}" aria-disabled="false">刷新列表</a></div></div>`;
   const status = panel.querySelector('.vle-quiz-status');
   const list = panel.querySelector('.vle-quiz-list');
   const note = panel.querySelector('.vle-quiz-note');
-  const refresh = panel.querySelector('button');
+  const refresh = panel.querySelector('.vle-quiz-refresh');
 
   function mount() {
     // Only use an established left sidebar. Never create a competing page sidebar.
@@ -190,7 +182,7 @@
   async function scan() {
     if (running) return;
     running = true;
-    refresh.disabled = true;
+    refresh.setAttribute('aria-disabled','true');
     status.textContent = '正在检查测验…';
     const found = new Map();
     const problems = [];
@@ -228,10 +220,10 @@
       lastProblems = problems;
       render();
       running = false;
-      refresh.disabled = false;
+      refresh.setAttribute('aria-disabled','false');
     }
   }
-  refresh.addEventListener('click', scan);
+  refresh.addEventListener('click', event => { event.preventDefault(); if (!running) void scan(); });
   // Re-evaluate closing times locally; no recurring background network requests.
   setInterval(() => { if (!running) render(); }, 60000);
   void scan();

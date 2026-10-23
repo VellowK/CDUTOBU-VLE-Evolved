@@ -7,20 +7,21 @@
   const supportedImage = /\.(?:png|jpe?g|gif|webp)$/i;
   const host = document.createElement('section');
   host.id = 'vle-deepseek-assistant';
+  host.className = 'block block-vle-assistant';
   // Keep the password field outside the page's ordinary querySelector tree.
   const ui = host.attachShadow({mode:'closed'});
   ui.innerHTML = `<style>
-    :host { display:block; margin:0 0 20px; background:#eee; border:1px solid #ddd;
-      padding:15px 20px; color:#222; font:14px/1.5 Georgia,"Times New Roman",serif; }
-    * { box-sizing:border-box; } h2 {font:400 15px/1.2 Georgia,serif;margin:0 0 10px;padding-bottom:5px;border-bottom:1px solid #d6d6d6}
-    p {margin:8px 0;overflow-wrap:anywhere} button,input{font:13px/1.5 system-ui,sans-serif}
+    :host { display:block; }
+    * { box-sizing:border-box; } h2 {margin:0}
+    p {margin:8px 0;overflow-wrap:anywhere} button,input{font:inherit}
     button {padding:5px 8px;margin:4px 3px 4px 0;border:1px solid #bbb;background:#fafafa;color:#222;cursor:pointer}
-    button:disabled{opacity:.5;cursor:default} button.primary{background:#35637a;color:#fff;border-color:#35637a}
+    button:disabled{opacity:.5;cursor:default} button.primary{background:var(--vle-link-color,#555);color:#fff;border-color:var(--vle-link-color,#555)}
     input[type=password]{width:100%;padding:5px;border:1px solid #bbb;background:white;color:#222}
-    .small{font-size:12px;color:#555}.result{white-space:pre-wrap;font-size:13px;max-height:300px;overflow:auto}
+    .small{opacity:.8}.result{white-space:pre-wrap;max-height:300px;overflow:auto}
     details{border-top:1px solid #d6d6d6;margin-top:10px;padding-top:8px}summary{cursor:pointer}
-    label{display:block;margin:8px 0}a{color:#0071b3} [hidden]{display:none!important}
+    label{display:block;margin:8px 0}a{color:var(--vle-link-color,inherit);text-decoration:var(--vle-link-decoration,none)} [hidden]{display:none!important}
   </style><h2>DeepSeek 助手</h2>
+  <div class="assistant-content">
   <p class="state" role="status" aria-live="polite">正在识别页面…</p>
   <p class="small">点击解答会把本题文字、选项和题图发送给 DeepSeek，按 API 用量计费。</p>
   <div><button class="solve primary" type="button">解答当前题</button>
@@ -35,7 +36,7 @@
     <button class="save" type="button">保存 Key</button><button class="forget" type="button">清除 Key</button>
     <p class="saved small"></p><p class="small">Key 仅保存到油猴脚本存储，不写入网页存储。只发送至 api.deepseek.com。</p>
     <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener noreferrer">获取 DeepSeek API Key</a>
-  </details>`;
+  </details></div>`;
   const find = s => ui.querySelector(s);
   const state = find('.state');
   const result = find('.result');
@@ -77,6 +78,30 @@
     } else {
       const region = document.querySelector('#sidebar-first .region-sidebar-first');
       if (region && host.parentElement !== region) region.append(host);
+    }
+    syncNativeStyle();
+  }
+
+  function syncNativeStyle() {
+    const reference = document.querySelector('#block-views-registered-modules-block-1');
+    if (!reference) return;
+    const typography = ['font-family','font-size','font-weight','font-style','line-height','color'];
+    const copy = (target,source,properties) => {
+      if (!source) return;
+      const computed = getComputedStyle(source);
+      for (const property of properties) {
+        const value = computed.getPropertyValue(property);
+        if (target.style.getPropertyValue(property) !== value) target.style.setProperty(property,value);
+      }
+    };
+    copy(host,reference,typography);
+    copy(find('h2'),reference.querySelector('h2'),[...typography,'padding','margin','border-bottom']);
+    copy(find('.assistant-content'),reference.querySelector('.content'),[...typography,'padding','margin']);
+    const link = reference.querySelector('.content a');
+    if (link) {
+      const computed = getComputedStyle(link);
+      host.style.setProperty('--vle-link-color',computed.color);
+      host.style.setProperty('--vle-link-decoration',computed.textDecorationLine);
     }
   }
 

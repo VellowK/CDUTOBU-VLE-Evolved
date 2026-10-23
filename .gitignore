@@ -2,6 +2,7 @@
 /work/
 /outputs/*
 !/outputs/vle-upcoming-quizzes.user.js
+!/outputs/CDUTOBU-VLE-Evolved.user.js
 .env
 .env.*
 *.log

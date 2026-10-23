@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.3.1 — 2026-10-23
+
+- Standardized the userscript name to CDUTOBU VLE Evolved.
+- Adopted native block typography, heading styles and link colors instead of hardcoded fonts and blue links.
+- Synchronized the isolated AI panel with the native sidebar typography.
+- Replaced the refresh button with an All modules-style, right-aligned text link.
+- Renamed the install asset and kept the legacy update path for existing installations.
+
 ## v0.3.0 — 2026-10-23
 
 - Added a preset DeepSeek Provider, API Key settings and text/image question input.
