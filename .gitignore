@@ -1,0 +1,9 @@
+/node_modules/
+/work/
+/outputs/*
+!/outputs/vle-upcoming-quizzes.user.js
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db

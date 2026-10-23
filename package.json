@@ -1,0 +1,16 @@
+{
+  "name": "cdutobu-vle-evolved",
+  "version": "0.3.0",
+  "description": "CDUT OBU VLE userscript with an independent quizzes sidebar and DeepSeek-assisted answering.",
+  "private": true,
+  "license": "MIT",
+  "author": "VellowK",
+  "repository": {"type": "git", "url": "https://github.com/VellowK/CDUTOBU-VLE-Evolved.git"},
+  "engines": {"node": ">=20"},
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "check": "node --check outputs/vle-upcoming-quizzes.user.js",
+    "test": "node --test tests/deepseek.test.cjs",
+    "preview": "node tests/fixtures/server.cjs"
+  }
+}
