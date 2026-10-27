@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.4.0 — 2026-10-27
+
+- Added Drupal multi-select checkbox recognition, including distinct option names within one question.
+- Added explicit single/multiple choice instructions and validated multi-answer JSON arrays.
+- Apply the complete selected set, clearing incorrect preselected boxes and verifying all options before Next.
+- Support mixed single/multiple choice quizzes; pause on malformed groups, duplicate or out-of-range answer IDs.
+- Added regression coverage for subsets, all options, one correct checkbox, stale suggestions and single-choice behavior.
+
 ## v0.3.1 — 2026-10-23
 
 - Standardized the userscript name to CDUTOBU VLE Evolved.

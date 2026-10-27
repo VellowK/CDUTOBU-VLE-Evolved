@@ -36,7 +36,9 @@ const server=http.createServer((req,res)=>{
       const call=JSON.parse(raw);mockCalls.push(call);
       const review=call.mode==='review';
       const choice=call.payload.messages[1].content?.includes?.('connect')?'o1':'o2';
-      const answer={choice_ids:review?[]:[call.mode==='invalid'?'o99':choice],confidence:review?0.2:call.mode==='low'?0.6:0.98,needs_review:review,reason:review?'题干包含无效的十进制数字，需要人工核对。':'模拟模型回答，仅用于本地测试。'};
+      const isMultiple=typeof call.payload.messages[1].content==='string'&&JSON.parse(call.payload.messages[1].content).question_type==='multiple_choice';
+      const selected=isMultiple?(call.mode==='multi-all'?['o1','o2','o3','o4']:call.mode==='multi-one'?['o2']:['o1','o2','o3']):[call.mode==='invalid'?'o99':choice];
+      const answer={choice_ids:review?[]:selected,confidence:review?0.2:call.mode==='low'?0.6:0.98,needs_review:review,reason:review?'题干包含无效的十进制数字，需要人工核对。':'模拟模型回答，仅用于本地测试。'};
       if(call.mode==='auth')res.statusCode=401;
       res.setHeader('Content-Type','application/json');
       const send=()=>res.end(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify(answer)}}]}));
@@ -47,16 +49,18 @@ const server=http.createServer((req,res)=>{
   if(url.pathname==='/node/1/take') {
     const caseName=url.searchParams.get('case')||'normal';
     const second=url.searchParams.get('p')==='2';
-    const stem=caseName==='review'?'What is 25E base 10 in hexadecimal?':second?'Which device connects different networks?':'How many bits does an IPv4 address contain?';
-    const choices=second?['Router','Switch']:['16','32','64','128'];
-    const type=caseName==='unsupported'?'checkbox':'radio';
+    const multi=caseName.startsWith('multi')&&!second;
+    const stem=caseName==='review'?'What is 25E base 10 in hexadecimal?':second?'Which device connects different networks?':multi?'Select every even integer in the list.':'How many bits does an IPv4 address contain?';
+    const choices=second?['Router','Switch']:['16','32','64','127'];
+    const type=caseName==='unsupported'||multi?'checkbox':'radio';
     const content=`<p id="case-marker">AI 场景：${caseName}</p><div id="quiz-progress">Page ${second?2:1} of 2</div><div class="countdown">Time left: 00:10:00</div>
       <form id="quiz-question-answering-form" method="get" action="/node/1/take">
       <h2>Question ${second?2:1}</h2><p class="stem">${stem}</p>
       ${caseName==='image'?'<span class="file"><a href="/fixtures/test.png">Synthetic image.png</a></span>':''}
       <input type="hidden" name="p" value="2"><input type="hidden" name="case" value="${caseName}">
       <input type="hidden" name="dummy-token" value="MUST_NOT_SEND_THIS">
-      <table>${choices.map((text,index)=>`<tr class="multichoice-row"><td><input type="${type}" class="form-radio" name="question[${second?202:201}][answer][user_answer]" value="${index+1}" id="option-${index+1}"></td><td><p>${text}</p></td></tr>`).join('')}</table>
+      <div class="form-item form-type-${multi?'checkboxes':'radios'}"><label>${multi?'Choose all that apply':'Choose one'}</label></div>
+      <table>${choices.map((text,index)=>`<tr class="multichoice-row"><td><input type="${type}" class="form-${type}" name="question[${second?202:201}][answer][user_answer]${multi?`[${index+1}]`:''}" value="${index+1}" id="option-${index+1}" ${multi&&index===3?'checked':''}></td><td><p>${text}</p></td></tr>`).join('')}</table>
       <input type="submit" hidden id="edit-navigation-submit-hidden" value="Next">
       <input type="${second?'button':'submit'}" id="edit-navigation-submit" value="${second?'Finish':'Next'}" ${second?'onclick="document.querySelector(\'.finish-count\').textContent=\'FINISH CLICKED\'"':''}>
       <p class="finish-count"></p></form><button type="button" onclick="document.querySelector('.stem').textContent='Changed question; do not fill old answer'">切换测试题</button>

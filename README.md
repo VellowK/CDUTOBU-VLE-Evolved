@@ -2,9 +2,9 @@
 
 为 [CDUT OBU VLE](https://vle.zycdut.net/) 提供更清晰的测验侧栏和 DeepSeek 辅助答题体验的 Tampermonkey（油猴）脚本。
 
-[安装 v0.3.1](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases/download/v0.3.1/CDUTOBU-VLE-Evolved.user.js) · [查看 Release](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases) · [反馈问题](https://github.com/VellowK/CDUTOBU-VLE-Evolved/issues)
+[安装 v0.4.0](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases/download/v0.4.0/CDUTOBU-VLE-Evolved.user.js) · [查看 Release](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases) · [反馈问题](https://github.com/VellowK/CDUTOBU-VLE-Evolved/issues)
 
-> v0.3.1 为预览版。已通过本地模拟测试，尚未完成真实 API Key、油猴扩展和真实 VLE 的联合验证。
+> v0.4.0 为预览版。已通过本地模拟测试，尚未完成真实 API Key、油猴扩展和真实 VLE 的联合验证。
 
 ## 功能
 
@@ -12,6 +12,7 @@
 - **当前课程范围**：扫描 Home、Current modules 及其分页，按链接去重、按开放时间排序，过滤已关闭的测验，不扫描 All modules 或归档课程。
 - **DeepSeek 预设**：地址和模型已配好，填写自己的 API Key 即可使用。
 - **单题解答**：读取当前题干、选项和图片附件，显示答案建议、简短解释和模型自报置信度。
+- **单选与多选**：按真实控件分组识别题型；多选可以选择一项、多项或全部，采用建议时同步勾选与取消勾选，并核对完整答案集合。
 - **连续填写**：手动开启后逐题求解、选择并进入下一题，跨页面恢复；遇到歧义、低置信度或错误时暂停。
 - **保留最终确认**：不会自动开始测验；连续模式在 Finish 前停止，由用户核对并正式提交。
 
@@ -20,7 +21,7 @@
 ## 安装
 
 1. 在浏览器安装 [Tampermonkey](https://www.tampermonkey.net/)。
-2. 点击上方“安装 v0.3.1”，在油猴安装页检查匹配网站和权限并安装。
+2. 点击上方“安装 v0.4.0”，在油猴安装页检查匹配网站和权限并安装。
 3. 如果浏览器只下载了 `.user.js` 文件，在油猴中新建脚本，将文件全部内容粘贴后保存。
 4. 打开并自行登录 `https://vle.zycdut.net/`，刷新页面。
 
@@ -44,10 +45,10 @@
 |---|---|
 | 网站 | `https://vle.zycdut.net/*` 顶层页面 |
 | 页面结构 | 当前已观察到的 Drupal 侧栏和 Quiz 表单 |
-| 自动填写题型 | 每页一道、结构可识别的单选题 |
+| 自动填写题型 | 每页一道、结构可识别的单选或多选题 |
 | 题图 | 同源 JPG、PNG、GIF、WebP 内嵌图片和图片附件 |
 | 图片限制 | 最多 4 张，单张 4MB；编码后总大小最多 12MB |
-| 其他附件和题型 | PDF、SVG、多选、填空等暂停处理 |
+| 其他附件和题型 | PDF、SVG、填空等暂停处理 |
 | 时间 | 按北京时间 UTC+8 解释原站日期 |
 | 列表扫描 | 最多 60 页，每页最多等待 12 秒；失败时提示不完整 |
 
@@ -84,10 +85,12 @@ npm test
 ```text
 src/
   sidebar.js             # 侧栏挂载与当前测验发现
+  choices.js             # 单选/多选分组、精确答案集合与填写校验
   deepseek.js            # 固定 Provider、请求与严格响应校验
   quiz-assistant.js      # 题目识别、设置、建议与连续模式
 scripts/build.cjs        # 生成单文件油猴脚本
 tests/deepseek.test.cjs   # Provider 单元测试
+tests/choices.test.cjs    # 分组与答案集合回归测试
 tests/fixtures/          # 仅本地使用的模拟页面和 GM 接口替身
 outputs/CDUTOBU-VLE-Evolved.user.js
 docs/testing.md          # 验证范围和限制
@@ -109,4 +112,5 @@ node tests/fixtures/server.cjs
 ## License
 
 [MIT License](LICENSE) · Copyright (c) 2026 VellowK。允许使用、修改和分发，须保留版权及许可声明；软件按原样提供，不附带担保。
+
 

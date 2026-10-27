@@ -36,6 +36,23 @@ test('strict choice mapping and explicit abstention',()=>{
   assert.throws(()=>p.parse('not json',2));
 });
 
+test('multiple-choice prompt and response accept subsets, one or all, but reject duplicates and invalid IDs',()=>{
+  const p=provider();
+  const question={...q,type:'multiple',options:[{text:'a'},{text:'b'},{text:'c'},{text:'d'}]};
+  const input=JSON.parse(p.body(question).messages[1].content);
+  assert.equal(input.question_type,'multiple_choice');
+  assert.equal(input.instruction,'Choose all that apply');
+  for(const ids of [['o2'],['o1','o3'],['o1','o2','o3','o4']]) {
+    const parsed=p.parse(response({...answer,choice_ids:ids}),4,'multiple');
+    assert.deepEqual(Array.from(parsed.indices),ids.map(id=>Number(id.slice(1))-1));
+  }
+  for(const ids of [['o2','o2'],['o1','o5'],['o0'],['o01'],[]]) {
+    assert.throws(()=>p.parse(response({...answer,choice_ids:ids}),4,'multiple'));
+  }
+  assert.throws(()=>p.parse(response({...answer,choice_ids:['o1','o3']}),4,'single'));
+  assert.equal(p.parse(response({...answer,choice_ids:[],needs_review:true}),4,'multiple').indices.length,0);
+});
+
 test('request is credentialless, fixed destination, bounded and cancellable',async()=>{
   let call;
   const p=provider(details=>{call=details;queueMicrotask(()=>details.onload({status:200,finalUrl:details.url,responseText:response(answer)}));return {abort(){}};});

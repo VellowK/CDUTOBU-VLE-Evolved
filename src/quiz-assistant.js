@@ -109,8 +109,7 @@
     const form = document.querySelector('#quiz-question-answering-form');
     if (!form || !shown(form)) throw new Error('请由你打开 Quiz 并开始尝试，助手不会自动开始测验。');
     const inputs = [...form.querySelectorAll('input[type=radio],input[type=checkbox]')].filter(shown);
-    if (inputs.length < 2 || inputs.length > 20 || inputs.some(e => e.type !== 'radio')
-        || new Set(inputs.map(e => e.name)).size !== 1) throw new Error('当前版本仅支持已识别的单选题，未修改答案。');
+    const type = VLEChoices.classify(inputs);
     const options = inputs.map(input => {
       const row = input.closest('tr');
       const text = row?.innerText.trim();
@@ -151,8 +150,8 @@
     }
     if (form.querySelector('svg,canvas') || images.size > 4) throw new Error('题图数量或格式超出当前支持范围。');
     const progress = document.querySelector('#quiz-progress')?.textContent.trim() || '';
-    const fingerprint = JSON.stringify({path:quizPath(),progress,stem,options:options.map(o => [o.input.name,o.input.value,o.text]),images:[...images]});
-    return {form,stem,options,images:[...images],progress,fingerprint};
+    const fingerprint = JSON.stringify({path:quizPath(),progress,type,stem,options:options.map(o => [o.input.name,o.input.value,o.text]),images:[...images]});
+    return {form,stem,type,options,images:[...images],progress,fingerprint};
   }
 
   function buttons() {
@@ -162,7 +161,7 @@
     autoButton.disabled = busy || !gmAvailable || !canContinue || !current;
     stopButton.disabled = !busy && !run.enabled;
     const reviewed = find('.accept').checked;
-    applyButton.disabled = busy || !suggestion || suggestion.answer.index === null
+    applyButton.disabled = busy || !suggestion || !suggestion.answer.indices.length
       || (suggestion.answer.needsReview || suggestion.answer.confidence < confidenceFloor) && !reviewed;
   }
 
@@ -194,22 +193,20 @@
   }
 
   function applyAnswer(item, reviewed = false) {
-    if (!item || item.answer.index === null) throw new Error('没有可采用的答案。');
+    if (!item || !item.answer.indices.length) throw new Error('没有可采用的答案。');
     if ((item.answer.needsReview || item.answer.confidence < confidenceFloor) && !reviewed) {
       throw new Error('这道题需要先人工核对。');
     }
     const current = question();
     if (current.fingerprint !== item.question.fingerprint) throw new Error('题目已变化，未填入旧答案。');
-    const input = current.options[item.answer.index]?.input;
-    if (!shown(input)) throw new Error('目标选项已变化，未填入答案。');
-    input.click();
-    const after = question();
-    if (after.fingerprint !== current.fingerprint || !input.checked) throw new Error('答案选择未能验证，请手动核对。');
+    VLEChoices.apply(current.options,item.answer.indices,current.type,shown,
+      () => question().fingerprint === current.fingerprint);
   }
 
   async function nextQuestion(item) {
     const current = question();
     if (current.fingerprint !== item.question.fingerprint) throw new Error('题目已变化，未自动翻页。');
+    if (!VLEChoices.matches(current.options,item.answer.indices)) throw new Error('勾选集合已变化，未自动翻页。');
     const next = current.form.querySelector('#edit-navigation-submit');
     if (!shown(next)) throw new Error('未识别到可见的下一题按钮。');
     if (next.value?.trim().toLowerCase() !== 'next') {
@@ -264,11 +261,11 @@
       const current = question();
       if (current.fingerprint !== q.fingerprint) throw new Error('题目已变化，已丢弃旧回答。');
       if (current.options.some((o,i) => o.checked !== q.options[i].checked)) throw new Error('检测到你手动修改了选项，未覆盖你的选择。');
-      const answer = provider.parse(response,q.options.length);
+      const answer = provider.parse(response,q.options.length,q.type);
       suggestion = {question:q,answer};
-      const review = answer.needsReview || answer.confidence < confidenceFloor || answer.index === null;
-      result.textContent = `${answer.index === null ? '未给出确定答案' : '建议：'+q.options[answer.index].text}\n置信度：${Math.round(answer.confidence*100)}%\n${answer.reason}`;
-      find('.review').hidden = !review || answer.index === null;
+      const review = answer.needsReview || answer.confidence < confidenceFloor || !answer.indices.length;
+      result.textContent = `${!answer.indices.length ? '未给出确定答案' : (q.type === 'multiple' ? '建议（多选）：\n' : '建议：')+answer.indices.map(index => q.options[index].text).join('\n')}\n置信度：${Math.round(answer.confidence*100)}%\n${answer.reason}`;
+      find('.review').hidden = !review || !answer.indices.length;
       state.textContent = review ? '需要人工核对，未自动填写或翻页。' : '建议已生成，可核对后采用。';
       if (automatic) {
         if (review) { halt('已暂停：这道题需要人工核对。'); return; }
@@ -330,8 +327,10 @@
       suggestion = null; result.textContent = ''; find('.review').hidden = true;
     }
     lastFingerprint = q.fingerprint;
-    if (state.textContent === '正在识别页面…') state.textContent = getKey()
-      ? '已识别单选题，可解答。' : '已识别单选题，请先配置 API Key。';
+    if (state.textContent === '正在识别页面…' || /^已识别[单多]选题/.test(state.textContent)) {
+      const kind = q.type === 'multiple' ? '多选' : '单选';
+      state.textContent = getKey() ? `已识别${kind}题，可解答。` : `已识别${kind}题，请先配置 API Key。`;
+    }
     buttons();
   }
   // Shadow UI updates do not trigger this observer; timer ticks do not initiate API calls.
