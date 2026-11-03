@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.4.3 — 2026-11-03
+
+- Join checkbox/radio and option-text highlights by removing cell spacing in the suggested answer table and matching internal border colors.
+- Restore native table layout when suggestions are cleared, without changing checked answers.
+- Publish the separate automatic answering controls and yellow suggestions from local builds v0.4.1/v0.4.2.
+
+## v0.4.2 — 2026-11-03 (local build, included in v0.4.3)
+
+- Highlight every suggested option row in yellow after single-question solving, without selecting or navigating.
+- Clear old highlights when solving again or when the question changes or disappears; preserve native backgrounds by removing only the script's class.
+- Keep manual review for uncertain suggestions and leave all rows unhighlighted when the model abstains.
+
+## v0.4.1 — 2026-11-03 (local build, included in v0.4.3)
+
+- Expose a prominent, separate 自动答题 button alongside 解答当前题目; explain their different behavior.
+- Lock solve/apply/restart controls while automatic answering or navigation is active; keep Stop available.
+- Show automatic progress and wait through temporary form removal during AJAX navigation, with the existing timeout and Finish boundary preserved.
+- Add local AJAX and failed-navigation scenarios and verify full-page continuation, mixed choice types, pause and stop behavior.
+
 ## v0.4.0 — 2026-10-27
 
 - Added Drupal multi-select checkbox recognition, including distinct option names within one question.

@@ -5,6 +5,27 @@
   const keyName = 'vle-deepseek-api-key';
   const confidenceFloor = 0.85;
   const supportedImage = /\.(?:png|jpe?g|gif|webp)$/i;
+  const highlightClass = 'vle-ai-suggested-option';
+  const highlightTableClass = 'vle-ai-suggestion-table';
+  const highlightedRows = new Set();
+  const highlightedTables = new Set();
+  let highlightedFingerprint = '';
+  const highlightStyle = document.createElement('style');
+  highlightStyle.textContent = `
+    #quiz-question-answering-form table.${highlightTableClass} {
+      border-collapse: collapse !important;
+      border-spacing: 0 !important;
+    }
+    #quiz-question-answering-form tr.${highlightClass},
+    #quiz-question-answering-form tr.${highlightClass} > td,
+    #quiz-question-answering-form tr.${highlightClass} > th {
+      background-color: #fff3a3 !important;
+    }
+    #quiz-question-answering-form tr.${highlightClass} > td,
+    #quiz-question-answering-form tr.${highlightClass} > th {
+      border-inline-color: #fff3a3 !important;
+    }`;
+  document.head.append(highlightStyle);
   const host = document.createElement('section');
   host.id = 'vle-deepseek-assistant';
   host.className = 'block block-vle-assistant';
@@ -24,10 +45,11 @@
   <div class="assistant-content">
   <p class="state" role="status" aria-live="polite">正在识别页面…</p>
   <p class="small">点击解答会把本题文字、选项和题图发送给 DeepSeek，按 API 用量计费。</p>
-  <div><button class="solve primary" type="button">解答当前题</button>
+  <div><button class="solve" type="button">解答当前题目</button>
     <button class="apply" type="button" disabled>采用建议</button></div>
-  <div><button class="auto" type="button">连续解答到提交前</button>
+  <div><button class="auto primary" type="button">自动答题</button>
     <button class="stop" type="button" disabled>停止</button></div>
+  <p class="small">单题解答将建议选项标黄，不勾选；自动答题会填写并进入下一题，到 Finish 前停止。</p>
   <p class="result"></p>
   <label class="review small" hidden><input class="accept" type="checkbox">我已核对这道题，允许采用此建议</label>
   <details><summary>API 设置</summary>
@@ -70,6 +92,27 @@
   function keyState() { find('.saved').textContent = getKey() ? '已保存 API Key（不回显）。' : '尚未配置 API Key。'; }
   function quizPath() { return location.pathname.match(/^\/node\/\d+\/take(?:\/\d+)?\/?$/)?.[0].match(/^\/node\/\d+\/take/)?.[0] || ''; }
   function shown(el) { return !!el && !el.disabled && !!el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden'; }
+
+  function clearHighlights() {
+    for (const row of highlightedRows) row.classList.remove(highlightClass);
+    for (const table of highlightedTables) table.classList.remove(highlightTableClass);
+    highlightedRows.clear();
+    highlightedTables.clear();
+    highlightedFingerprint = '';
+  }
+
+  function highlightSuggestion(q, indices) {
+    clearHighlights();
+    for (const index of indices) {
+      const row = q.options[index].input.closest('tr');
+      row.classList.add(highlightClass);
+      highlightedRows.add(row);
+      const table = row.closest('table');
+      table.classList.add(highlightTableClass);
+      highlightedTables.add(table);
+    }
+    if (highlightedRows.size) highlightedFingerprint = q.fingerprint;
+  }
 
   function mountAI() {
     const panel = document.getElementById('vle-upcoming-quizzes-skeleton');
@@ -157,11 +200,12 @@
   function buttons() {
     let current = false;
     try { question(); current = true; } catch {}
-    solveButton.disabled = busy || !gmAvailable || !current;
-    autoButton.disabled = busy || !gmAvailable || !canContinue || !current;
+    solveButton.disabled = busy || run.enabled || !gmAvailable || !current;
+    autoButton.disabled = busy || run.enabled || !gmAvailable || !canContinue || !current;
+    autoButton.textContent = run.enabled ? '自动答题中…' : '自动答题';
     stopButton.disabled = !busy && !run.enabled;
     const reviewed = find('.accept').checked;
-    applyButton.disabled = busy || !suggestion || !suggestion.answer.indices.length
+    applyButton.disabled = busy || run.enabled || !suggestion || !suggestion.answer.indices.length
       || (suggestion.answer.needsReview || suggestion.answer.confidence < confidenceFloor) && !reviewed;
   }
 
@@ -216,6 +260,8 @@
     const steps = (run.steps || 0) + 1;
     if (steps >= 100) { halt('已达到连续处理上限，请人工核对。'); return; }
     putRun({...run,enabled:true,steps,lastFingerprint:current.fingerprint,phase:'navigating'});
+    state.textContent = '已填写，正在进入下一题…';
+    buttons();
     next.click();
     // Full navigation resumes from the per-tab userscript state. For AJAX navigation,
     // wait for a genuinely new question and never repeat a failed Next submission.
@@ -235,6 +281,7 @@
   async function solve(automatic = false) {
     await ready;
     if (busy || automatic && !run.enabled) return;
+    clearHighlights();
     let timer;
     const token = ++generation;
     try {
@@ -244,6 +291,7 @@
       if (automatic && (run.quizPath !== quizPath() || run.lastFingerprint === q.fingerprint)) {
         throw new Error('测验或题目状态未变化，未重复自动作答。');
       }
+      if (automatic) putRun({...run,phase:'solving'});
       busy = true;
       suggestion = null;
       find('.review').hidden = true;
@@ -252,7 +300,7 @@
       controller = new AbortController();
       timer = setTimeout(() => controller?.abort(),65000);
       buttons();
-      state.textContent = `${q.progress || '当前题'}：正在请求 DeepSeek…`;
+      state.textContent = `${automatic ? '自动答题 · ' : ''}${q.progress || '当前题'}：正在请求 DeepSeek…`;
       const images = [];
       for (const url of q.images) images.push(await imageData(url,controller.signal));
       if (images.reduce((sum,s) => sum+s.length,0) > 12 * 1024 * 1024) throw new Error('题图总大小超限，请手动查看。');
@@ -263,10 +311,12 @@
       if (current.options.some((o,i) => o.checked !== q.options[i].checked)) throw new Error('检测到你手动修改了选项，未覆盖你的选择。');
       const answer = provider.parse(response,q.options.length,q.type);
       suggestion = {question:q,answer};
+      if (!automatic) highlightSuggestion(current,answer.indices);
       const review = answer.needsReview || answer.confidence < confidenceFloor || !answer.indices.length;
       result.textContent = `${!answer.indices.length ? '未给出确定答案' : (q.type === 'multiple' ? '建议（多选）：\n' : '建议：')+answer.indices.map(index => q.options[index].text).join('\n')}\n置信度：${Math.round(answer.confidence*100)}%\n${answer.reason}`;
       find('.review').hidden = !review || !answer.indices.length;
-      state.textContent = review ? '需要人工核对，未自动填写或翻页。' : '建议已生成，可核对后采用。';
+      state.textContent = review ? '需要人工核对，未自动填写或翻页。'
+        : automatic ? '建议已生成，可核对后采用。' : '建议选项已标黄，未勾选；可核对后采用。';
       if (automatic) {
         if (review) { halt('已暂停：这道题需要人工核对。'); return; }
         applyAnswer(suggestion);
@@ -290,8 +340,10 @@
   find('.accept').addEventListener('change',buttons);
   autoButton.addEventListener('click',async () => {
     await ready;
+    if (busy || run.enabled) return;
     if (!quizPath()) { state.textContent = '未识别到本次测验路径，不能连续解答。'; return; }
     putRun({enabled:true,quizPath:quizPath(),steps:0,lastFingerprint:'',phase:'solving'});
+    buttons();
     void solve(true);
   });
   stopButton.addEventListener('click',() => halt('已停止，未继续翻页或提交。'));
@@ -303,7 +355,7 @@
     GM_setValue(keyName,key);
     keyInput.value = '';
     keyState();
-    state.textContent = 'API Key 已保存。点击“解答当前题”即可使用。';
+    state.textContent = 'API Key 已保存。可解答当前题目或开启自动答题。';
   });
   find('.forget').addEventListener('click',() => {
     halt();
@@ -318,13 +370,19 @@
     let q;
     try { q = question(); }
     catch (error) {
+      clearHighlights();
+      // AJAX may remove the old form before inserting the next one. The navigation
+      // waiter owns this transition and its timeout; do not halt in the gap.
+      if (run.enabled && run.phase === 'navigating') { buttons(); return; }
       if (run.enabled || busy) halt(error.message);
       else if (!suggestion) state.textContent = document.querySelector('#quiz-question-answering-form')
         ? error.message : '在 Quiz 答题页可解答当前题。';
       buttons(); return;
     }
+    if (highlightedFingerprint && highlightedFingerprint !== q.fingerprint) clearHighlights();
     if (lastFingerprint && lastFingerprint !== q.fingerprint && !busy) {
       suggestion = null; result.textContent = ''; find('.review').hidden = true;
+      state.textContent = '题目已变化，请重新解答。';
     }
     lastFingerprint = q.fingerprint;
     if (state.textContent === '正在识别页面…' || /^已识别[单多]选题/.test(state.textContent)) {

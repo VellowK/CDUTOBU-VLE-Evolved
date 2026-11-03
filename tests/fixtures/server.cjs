@@ -66,7 +66,21 @@ const server=http.createServer((req,res)=>{
       <p class="finish-count"></p></form><button type="button" onclick="document.querySelector('.stem').textContent='Changed question; do not fill old answer'">切换测试题</button>
       <p>GM 接口和模型均为本地模拟，测试 Key 为虚构值。未向 DeepSeek 发送任何数据。</p>`;
     res.setHeader('Content-Type','text/html; charset=utf-8');
-    return res.end(page(content,false).replace('</html>','<script src="/gm-test-shim.js"></script><script src="/vle-upcoming-quizzes.user.js"></script></html>'));
+    const navigationTest = caseName==='ajax'||caseName==='stalled' ? `<script>
+      document.querySelector('#quiz-question-answering-form').addEventListener('submit',async event=>{
+        event.preventDefault();
+        ${caseName==='stalled'?'return;':`
+        const response=await fetch('/node/1/take?case=ajax&p=2');
+        const nextPage=new DOMParser().parseFromString(await response.text(),'text/html');
+        const old=document.querySelector('#quiz-question-answering-form');
+        const parent=old.parentElement;const sibling=old.nextSibling;old.remove();
+        setTimeout(()=>{
+          parent.insertBefore(nextPage.querySelector('#quiz-question-answering-form'),sibling);
+          document.querySelector('#quiz-progress').textContent='Page 2 of 2';
+        },900);`}
+      });
+    </script>` : '';
+    return res.end(page(content,false).replace('</html>','<script src="/gm-test-shim.js"></script><script src="/vle-upcoming-quizzes.user.js"></script>'+navigationTest+'</html>'));
   }
   if(url.pathname==='/__audit') {res.setHeader('Content-Type','text/plain');return res.end(JSON.stringify(requests));}
   if(url.pathname.startsWith('/quiz/')) {res.statusCode=400;return res.end('Quiz landing pages must not be fetched by the scanner');}
