@@ -2,9 +2,9 @@
 
 为 [CDUT OBU VLE](https://vle.zycdut.net/) 提供更清晰的测验侧栏和 DeepSeek 辅助答题体验的 Tampermonkey（油猴）脚本。
 
-[安装 v0.4.4](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases/download/v0.4.4/CDUTOBU-VLE-Evolved.user.js) · [查看 Release](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases) · [反馈问题](https://github.com/VellowK/CDUTOBU-VLE-Evolved/issues)
+[安装 v0.5.0](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases/download/v0.5.0/CDUTOBU-VLE-Evolved.user.js) · [查看 Release](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases) · [反馈问题](https://github.com/VellowK/CDUTOBU-VLE-Evolved/issues)
 
-> v0.4.4 为预览版，包含独立“自动答题”入口和连贯的黄色建议高亮。已通过本地模拟测试，尚未完成真实 API Key、油猴扩展和真实 VLE 的联合验证。
+> v0.5.0 为预览版，新增已观察到的 Drupal 单输入框填空题支持。已通过本地模拟测试，尚未完成真实 API Key、油猴扩展和真实 VLE 的联合验证。
 
 ## 功能
 
@@ -13,6 +13,7 @@
 - **DeepSeek 预设**：地址和模型已配好，填写自己的 API Key 即可使用。
 - **单题解答**：读取当前题干、选项和图片附件，显示答案建议、简短解释和模型自报置信度；建议选项的勾选框与文字背景连成黄色整块，不改变勾选。重新解答或切换题目时清除旧高亮。
 - **单选与多选**：按真实控件分组识别题型；单题模式仅提示，由用户自行勾选。自动答题可以选择一项、多项或全部，并核对完整答案集合。
+- **填空题**：支持每题一个单行文本框，包括多个空共用一个输入框。单题模式只显示文字建议并将输入框标黄；自动模式按原文填写、触发输入事件、核对后翻页。不会把填空题错误地当成选择题。
 - **自动答题**：独立按钮，手动开启后逐题求解、选择并进入下一题，跨页面恢复；运行期间显示“自动答题中…”，遇到歧义、低置信度或错误时暂停。
 - **保留最终确认**：不会自动开始测验；连续模式在 Finish 前停止，由用户核对并正式提交。
 
@@ -21,7 +22,7 @@
 ## 安装
 
 1. 在浏览器安装 [Tampermonkey](https://www.tampermonkey.net/)。
-2. 点击上方“安装 v0.4.4”，在油猴安装页检查匹配网站和权限并安装。
+2. 点击上方“安装 v0.5.0”，在油猴安装页检查匹配网站和权限并安装。
 3. 如果浏览器只下载了 `.user.js` 文件，在油猴中新建脚本，将文件全部内容粘贴后保存。
 4. 打开并自行登录 `https://vle.zycdut.net/`，刷新页面。
 
@@ -31,7 +32,7 @@
 
 1. 在侧栏 **DeepSeek 助手 → API 设置** 中填写自己的 [DeepSeek API Key](https://platform.deepseek.com/api_keys)，点击“保存 Key”。
 2. 自行打开测验并开始尝试。
-3. 点击 **解答当前题目** 获取建议并将建议选项背景标黄（多选逐项标黄），核对后在题目中自行勾选；单题模式不填写、不翻页，没有“采用建议”按钮。
+3. 点击 **解答当前题目** 获取建议并将建议选项背景标黄（多选逐项标黄）；填空题显示文字建议并标黄输入框。核对后在题目中自行作答；单题模式不填写、不翻页，没有“采用建议”按钮。
 4. 或点击独立的 **自动答题**，自动解答、填写并点击 Next，继续处理后续题目。需要中断时点击 **停止**。请求或翻页期间禁用重复启动；异步翻页等待最多 10 秒，失败时停止。
 5. 最后一题填写后，核对答案并自行点击网站的 **Finish**。
 
@@ -45,14 +46,17 @@
 |---|---|
 | 网站 | `https://vle.zycdut.net/*` 顶层页面 |
 | 页面结构 | 当前已观察到的 Drupal 侧栏和 Quiz 表单 |
-| 自动填写题型 | 每页一道、结构可识别的单选或多选题 |
+| 自动填写题型 | 每页一道、结构可识别的单选、多选或单输入框填空题 |
+| 填空限制 | 单行文本框，最多 256 字符或页面更短的上限；多个空共用一个框时，答案按题面顺序放在同一字符串中 |
 | 题图 | 同源 JPG、PNG、GIF、WebP 内嵌图片和图片附件 |
 | 图片限制 | 最多 4 张，单张 4MB；编码后总大小最多 12MB |
-| 其他附件和题型 | PDF、SVG、填空等暂停处理 |
+| 其他附件和题型 | PDF、SVG、多输入框、textarea、只读框、混合答题控件等暂停处理 |
 | 时间 | 按北京时间 UTC+8 解释原站日期 |
 | 列表扫描 | 最多 60 页，每页最多等待 12 秒；失败时提示不完整 |
 
 不支持跨站、带查询参数或未识别格式的图片。站点改版、特殊题干、图片不清晰、模型误判和网络异常都可能影响结果。若整个侧栏被站点隐藏，面板也会随之隐藏。
+
+填空题可能严格匹配大小写、标点、单位或分隔符。脚本不截断超长答案，不擅自改写答案格式；格式或语义不确定时要求模型标记复核。模型自报置信度并不能保证符合教师的评分规则。请求期间手动修改输入时，会丢弃模型回答，保留你的内容。
 
 本项目是独立的个人工具，与学校及 DeepSeek 无隶属或背书关系。使用时请遵守课程规则和站点要求。
 
@@ -60,7 +64,7 @@
 
 - API Key 保存到油猴脚本专属存储，不写入 VLE 的 localStorage/sessionStorage；保存后清空输入框，不回显已保存的 Key。
 - Key 不是加密保管的秘密保险库；可以在设置里清除，在 DeepSeek 平台撤销。请勿写入源码、Issue 或截图。
-- 点击解答或开启连续模式后，才向 DeepSeek 发送本题文字、选项和题图；不发送整页 HTML、学生资料或网站表单隐藏字段。
+- 点击解答或开启连续模式后，才向 DeepSeek 发送本题文字、选项和题图；填空题额外发送单行、单框和最大长度约束。不发送已输入的答案、控件名称、整页 HTML、学生资料或网站表单隐藏字段。
 - 图片先由浏览器同源读取并转成 data URL；不会把网站 Cookie 或图片登录信息交给 DeepSeek。
 - API 请求固定发往 `api.deepseek.com`，使用独立 Bearer Key、不附带 Cookie、不跟随重定向；模型输出只作为 JSON 和文本处理，不执行代码。
 - 连续模式只记录在当前标签页并限定当前 Quiz。离开本次测验后停止，无后台定时开考或批量启动功能。
@@ -86,11 +90,13 @@ npm test
 src/
   sidebar.js             # 侧栏挂载与当前测验发现
   choices.js             # 单选/多选分组、精确答案集合与填写校验
+  short-answer.js        # 填空控件识别、长度校验和原生输入事件
   deepseek.js            # 固定 Provider、请求与严格响应校验
   quiz-assistant.js      # 题目识别、设置、建议与连续模式
 scripts/build.cjs        # 生成单文件油猴脚本
 tests/deepseek.test.cjs   # Provider 单元测试
 tests/choices.test.cjs    # 分组与答案集合回归测试
+tests/short-answer.test.cjs # 填空输入、手动修改保护与事件验证
 tests/fixtures/          # 仅本地使用的模拟页面和 GM 接口替身
 outputs/CDUTOBU-VLE-Evolved.user.js
 docs/testing.md          # 验证范围和限制

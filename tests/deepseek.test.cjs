@@ -68,6 +68,30 @@ test('request is credentialless, fixed destination, bounded and cancellable',asy
   abort.abort();await assert.rejects(task,/已停止/);assert.equal(aborted,true);
 });
 
+test('short-answer payload sends one-field constraints, not DOM names, existing answers or hidden values',()=>{
+  const p=provider();
+  const payload=p.body({type:'short',stem:'Enter the two terms in order, separated by a comma.',maxLength:32,
+    field:{value:'PRIVATE_EXISTING_ANSWER',input:{name:'SECRET_FIELD_NAME'}},secret:'HIDDEN_TOKEN'});
+  const content=JSON.parse(payload.messages[1].content);
+  assert.equal(content.question_type,'short_answer');
+  assert.deepEqual(content.answer_constraints,{field_count:1,single_line:true,max_length:32});
+  assert.equal(content.options,undefined);
+  for(const secret of ['PRIVATE_EXISTING_ANSWER','SECRET_FIELD_NAME','HIDDEN_TOKEN'])assert.ok(!JSON.stringify(payload).includes(secret));
+  assert.throws(()=>p.body({type:'short',stem:'x',maxLength:0}));
+});
+
+test('short-answer parsing accepts exact strings and abstention, rejects wrong schema, multiline and overlong output',()=>{
+  const p=provider();const value={answer_text:'alpha, beta',confidence:0.96,needs_review:false,reason:'Synthetic explanation.'};
+  assert.equal(p.parse(response(value),0,'short',32).text,'alpha, beta');
+  assert.equal(p.parse(response({...value,answer_text:'',needs_review:true}),0,'short').text,'');
+  for(const invalid of [answer,{...value,answer_text:42},{...value,answer_text:''},
+    {...value,answer_text:'x'.repeat(33)},{...value,answer_text:'a\nb'},
+    {...value,confidence:'0.99'},{...value,needs_review:'false'},{...value,reason:{}}]) {
+    assert.throws(()=>p.parse(response(invalid),0,'short',32));
+  }
+  assert.throws(()=>p.parse({choices:[{finish_reason:'length',message:{content:'{}'}}]},0,'short'));
+});
+
 test('auth/billing/ratelimit/timeout/errors do not expose remote response or API key',async()=>{
   for(const code of [401,402,429,500,503]) {
     const p=provider(d=>{queueMicrotask(()=>d.onload({status:code,responseText:'SECRET-ECHO'}));return {abort(){}};});

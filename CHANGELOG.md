@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.5.0 — 2026-11-03
+
+- Recognize observed Drupal short-answer containers with one single-line answer field, including several blanks sharing that field.
+- Add a dedicated short_answer Provider schema, strict answer-text validation and input-length constraints without sending existing answers or DOM identifiers.
+- Single-question solving shows a text suggestion and highlights the empty/current field; users still enter answers themselves.
+- Automatic answering fills plain text, emits input/change events, verifies the resulting value and continues across mixed question types, stopping before Finish.
+- Preserve user edits during requests; pause on uncertainty, invalid/overlong/multiline answers and unsupported controls.
+- Add five test groups and synthetic browser scenarios; 13 unit test groups pass.
+
 ## v0.4.4 — 2026-11-03
 
 - Remove the Apply suggestion button and its review checkbox. Single-question solving only highlights recommendations; users select answers in the original quiz controls.

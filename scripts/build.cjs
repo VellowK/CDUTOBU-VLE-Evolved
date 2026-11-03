@@ -25,7 +25,7 @@ const header = `// ==UserScript==
 // @noframes
 // ==/UserScript==
 `;
-const sources=['sidebar.js','choices.js','deepseek.js','quiz-assistant.js'].map(name =>
+const sources=['sidebar.js','choices.js','short-answer.js','deepseek.js','quiz-assistant.js'].map(name =>
   fs.readFileSync(path.join(root,'src',name),'utf8').replace(/^\uFEFF/,''));
 const bundle = header+'\n'+sources.join('\n\n');
 fs.writeFileSync(path.join(root,'outputs','CDUTOBU-VLE-Evolved.user.js'),bundle,'utf8');

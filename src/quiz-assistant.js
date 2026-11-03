@@ -7,7 +7,7 @@
   const supportedImage = /\.(?:png|jpe?g|gif|webp)$/i;
   const highlightClass = 'vle-ai-suggested-option';
   const highlightTableClass = 'vle-ai-suggestion-table';
-  const highlightedRows = new Set();
+  const highlightedElements = new Set();
   const highlightedTables = new Set();
   let highlightedFingerprint = '';
   const highlightStyle = document.createElement('style');
@@ -16,6 +16,7 @@
       border-collapse: collapse !important;
       border-spacing: 0 !important;
     }
+    #quiz-question-answering-form input.${highlightClass},
     #quiz-question-answering-form tr.${highlightClass},
     #quiz-question-answering-form tr.${highlightClass} > td,
     #quiz-question-answering-form tr.${highlightClass} > th {
@@ -48,7 +49,7 @@
   <div><button class="solve" type="button">解答当前题目</button></div>
   <div><button class="auto primary" type="button">自动答题</button>
     <button class="stop" type="button" disabled>停止</button></div>
-  <p class="small">单题解答将建议选项标黄，请自行选择；自动答题会填写并进入下一题，到 Finish 前停止。</p>
+  <p class="small">单题解答显示建议并标黄，请自行作答；自动答题会填写并进入下一题，到 Finish 前停止。</p>
   <p class="result"></p>
   <details><summary>API 设置</summary>
     <p class="small">DeepSeek · deepseek-flash（支持题图）</p>
@@ -91,24 +92,30 @@
   function shown(el) { return !!el && !el.disabled && !!el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden'; }
 
   function clearHighlights() {
-    for (const row of highlightedRows) row.classList.remove(highlightClass);
+    for (const element of highlightedElements) element.classList.remove(highlightClass);
     for (const table of highlightedTables) table.classList.remove(highlightTableClass);
-    highlightedRows.clear();
+    highlightedElements.clear();
     highlightedTables.clear();
     highlightedFingerprint = '';
   }
 
-  function highlightSuggestion(q, indices) {
+  function highlightSuggestion(q, answer) {
     clearHighlights();
-    for (const index of indices) {
+    if (q.type === 'short') {
+      if (answer.text) {
+        q.field.input.classList.add(highlightClass);
+        highlightedElements.add(q.field.input);
+      }
+    }
+    for (const index of answer.indices) {
       const row = q.options[index].input.closest('tr');
       row.classList.add(highlightClass);
-      highlightedRows.add(row);
+      highlightedElements.add(row);
       const table = row.closest('table');
       table.classList.add(highlightTableClass);
       highlightedTables.add(table);
     }
-    if (highlightedRows.size) highlightedFingerprint = q.fingerprint;
+    if (highlightedElements.size) highlightedFingerprint = q.fingerprint;
   }
 
   function mountAI() {
@@ -149,7 +156,17 @@
     const form = document.querySelector('#quiz-question-answering-form');
     if (!form || !shown(form)) throw new Error('请由你打开 Quiz 并开始尝试，助手不会自动开始测验。');
     const inputs = [...form.querySelectorAll('input[type=radio],input[type=checkbox]')].filter(shown);
-    const type = VLEChoices.classify(inputs);
+    const textInputs = [...form.querySelectorAll('input[type=text],textarea,select')].filter(shown);
+    const short = !inputs.length && textInputs.length > 0;
+    let field;
+    if (short) {
+      field = VLEShortAnswer.inspect(textInputs);
+      if (!field.input.closest('.quiz-question-short-answer')
+          || form.querySelectorAll('.quiz-question-short-answer').length !== 1) {
+        throw new Error('填空题容器无法确认，请自行作答。');
+      }
+    } else if (textInputs.length) throw new Error('混合选择与填空控件暂不支持，请自行作答。');
+    const type = short ? 'short' : VLEChoices.classify(inputs);
     const options = inputs.map(input => {
       const row = input.closest('tr');
       const text = row?.innerText.trim();
@@ -190,8 +207,9 @@
     }
     if (form.querySelector('svg,canvas') || images.size > 4) throw new Error('题图数量或格式超出当前支持范围。');
     const progress = document.querySelector('#quiz-progress')?.textContent.trim() || '';
-    const fingerprint = JSON.stringify({path:quizPath(),progress,type,stem,options:options.map(o => [o.input.name,o.input.value,o.text]),images:[...images]});
-    return {form,stem,type,options,images:[...images],progress,fingerprint};
+    const fingerprint = JSON.stringify({path:quizPath(),progress,type,stem,options:options.map(o => [o.input.name,o.input.value,o.text]),
+      field:field ? [field.input.name,field.input.id,field.maxLength] : null,images:[...images]});
+    return {form,stem,type,options,field,maxLength:field?.maxLength,images:[...images],progress,fingerprint};
   }
 
   function buttons() {
@@ -231,20 +249,23 @@
   }
 
   function applyAnswer(item) {
-    if (!item || !item.answer.indices.length) throw new Error('没有可采用的答案。');
+    if (!item || (item.question.type === 'short' ? !item.answer.text : !item.answer.indices.length)) throw new Error('没有可填写的答案。');
     if (item.answer.needsReview || item.answer.confidence < confidenceFloor) {
       throw new Error('这道题需要先人工核对。');
     }
     const current = question();
     if (current.fingerprint !== item.question.fingerprint) throw new Error('题目已变化，未填入旧答案。');
-    VLEChoices.apply(current.options,item.answer.indices,current.type,shown,
-      () => question().fingerprint === current.fingerprint);
+    const isCurrent = () => question().fingerprint === current.fingerprint;
+    if (current.type === 'short') VLEShortAnswer.apply(current.field,item.answer.text,shown,isCurrent);
+    else VLEChoices.apply(current.options,item.answer.indices,current.type,shown,isCurrent);
   }
 
   async function nextQuestion(item) {
     const current = question();
     if (current.fingerprint !== item.question.fingerprint) throw new Error('题目已变化，未自动翻页。');
-    if (!VLEChoices.matches(current.options,item.answer.indices)) throw new Error('勾选集合已变化，未自动翻页。');
+    const matches = current.type === 'short' ? VLEShortAnswer.matches(current.field,item.answer.text)
+      : VLEChoices.matches(current.options,item.answer.indices);
+    if (!matches) throw new Error('答案已变化或未填写成功，未自动翻页。');
     const next = current.form.querySelector('#edit-navigation-submit');
     if (!shown(next)) throw new Error('未识别到可见的下一题按钮。');
     if (next.value?.trim().toLowerCase() !== 'next') {
@@ -300,14 +321,19 @@
       if (token !== generation) return;
       const current = question();
       if (current.fingerprint !== q.fingerprint) throw new Error('题目已变化，已丢弃旧回答。');
-      if (current.options.some((o,i) => o.checked !== q.options[i].checked)) throw new Error('检测到你手动修改了选项，未覆盖你的选择。');
-      const answer = provider.parse(response,q.options.length,q.type);
+      if (q.type === 'short' ? current.field.value !== q.field.value
+        : current.options.some((o,i) => o.checked !== q.options[i].checked)) throw new Error('检测到你手动修改了答案，未覆盖你的输入或选择。');
+      const answer = provider.parse(response,q.options.length,q.type,q.maxLength);
       suggestion = {question:q,answer};
-      if (!automatic) highlightSuggestion(current,answer.indices);
-      const review = answer.needsReview || answer.confidence < confidenceFloor || !answer.indices.length;
-      result.textContent = `${!answer.indices.length ? '未给出确定答案' : (q.type === 'multiple' ? '建议（多选）：\n' : '建议：')+answer.indices.map(index => q.options[index].text).join('\n')}\n置信度：${Math.round(answer.confidence*100)}%\n${answer.reason}`;
-      state.textContent = review ? '需要人工核对，请在题目中自行选择；未自动填写或翻页。'
-        : automatic ? '正在填写建议答案…' : '建议选项已标黄，请在题目中自行选择。';
+      if (!automatic) highlightSuggestion(current,answer);
+      const hasAnswer = q.type === 'short' ? !!answer.text : !!answer.indices.length;
+      const review = answer.needsReview || answer.confidence < confidenceFloor || !hasAnswer;
+      const recommendation = q.type === 'short' ? '填空建议：'+answer.text
+        : (q.type === 'multiple' ? '建议（多选）：\n' : '建议：')+answer.indices.map(index => q.options[index].text).join('\n');
+      result.textContent = `${hasAnswer ? recommendation : '未给出确定答案'}\n置信度：${Math.round(answer.confidence*100)}%\n${answer.reason}`;
+      state.textContent = review ? '需要人工核对，请在题目中自行作答；未自动填写或翻页。'
+        : automatic ? '正在填写建议答案…' : q.type === 'short' ? '填空建议已生成，输入框已标黄，请自行填写。'
+        : '建议选项已标黄，请在题目中自行选择。';
       if (automatic) {
         if (review) { halt('已暂停：这道题需要人工核对。'); return; }
         applyAnswer(suggestion);
@@ -371,8 +397,8 @@
       state.textContent = '题目已变化，请重新解答。';
     }
     lastFingerprint = q.fingerprint;
-    if (state.textContent === '正在识别页面…' || /^已识别[单多]选题/.test(state.textContent)) {
-      const kind = q.type === 'multiple' ? '多选' : '单选';
+    if (state.textContent === '正在识别页面…' || /^已识别(?:单选|多选|填空)题/.test(state.textContent)) {
+      const kind = q.type === 'short' ? '填空' : q.type === 'multiple' ? '多选' : '单选';
       state.textContent = getKey() ? `已识别${kind}题，可解答。` : `已识别${kind}题，请先配置 API Key。`;
     }
     buttons();
