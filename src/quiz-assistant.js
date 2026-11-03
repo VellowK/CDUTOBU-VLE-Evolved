@@ -45,13 +45,11 @@
   <div class="assistant-content">
   <p class="state" role="status" aria-live="polite">正在识别页面…</p>
   <p class="small">点击解答会把本题文字、选项和题图发送给 DeepSeek，按 API 用量计费。</p>
-  <div><button class="solve" type="button">解答当前题目</button>
-    <button class="apply" type="button" disabled>采用建议</button></div>
+  <div><button class="solve" type="button">解答当前题目</button></div>
   <div><button class="auto primary" type="button">自动答题</button>
     <button class="stop" type="button" disabled>停止</button></div>
-  <p class="small">单题解答将建议选项标黄，不勾选；自动答题会填写并进入下一题，到 Finish 前停止。</p>
+  <p class="small">单题解答将建议选项标黄，请自行选择；自动答题会填写并进入下一题，到 Finish 前停止。</p>
   <p class="result"></p>
-  <label class="review small" hidden><input class="accept" type="checkbox">我已核对这道题，允许采用此建议</label>
   <details><summary>API 设置</summary>
     <p class="small">DeepSeek · deepseek-flash（支持题图）</p>
     <label>API Key<input class="key" type="password" autocomplete="off" spellcheck="false" placeholder="粘贴 DeepSeek API Key"></label>
@@ -63,7 +61,6 @@
   const state = find('.state');
   const result = find('.result');
   const solveButton = find('.solve');
-  const applyButton = find('.apply');
   const autoButton = find('.auto');
   const stopButton = find('.stop');
   const keyInput = find('.key');
@@ -204,9 +201,6 @@
     autoButton.disabled = busy || run.enabled || !gmAvailable || !canContinue || !current;
     autoButton.textContent = run.enabled ? '自动答题中…' : '自动答题';
     stopButton.disabled = !busy && !run.enabled;
-    const reviewed = find('.accept').checked;
-    applyButton.disabled = busy || run.enabled || !suggestion || !suggestion.answer.indices.length
-      || (suggestion.answer.needsReview || suggestion.answer.confidence < confidenceFloor) && !reviewed;
   }
 
   function halt(message) {
@@ -236,9 +230,9 @@
     });
   }
 
-  function applyAnswer(item, reviewed = false) {
+  function applyAnswer(item) {
     if (!item || !item.answer.indices.length) throw new Error('没有可采用的答案。');
-    if ((item.answer.needsReview || item.answer.confidence < confidenceFloor) && !reviewed) {
+    if (item.answer.needsReview || item.answer.confidence < confidenceFloor) {
       throw new Error('这道题需要先人工核对。');
     }
     const current = question();
@@ -294,8 +288,6 @@
       if (automatic) putRun({...run,phase:'solving'});
       busy = true;
       suggestion = null;
-      find('.review').hidden = true;
-      find('.accept').checked = false;
       result.textContent = '';
       controller = new AbortController();
       timer = setTimeout(() => controller?.abort(),65000);
@@ -314,9 +306,8 @@
       if (!automatic) highlightSuggestion(current,answer.indices);
       const review = answer.needsReview || answer.confidence < confidenceFloor || !answer.indices.length;
       result.textContent = `${!answer.indices.length ? '未给出确定答案' : (q.type === 'multiple' ? '建议（多选）：\n' : '建议：')+answer.indices.map(index => q.options[index].text).join('\n')}\n置信度：${Math.round(answer.confidence*100)}%\n${answer.reason}`;
-      find('.review').hidden = !review || !answer.indices.length;
-      state.textContent = review ? '需要人工核对，未自动填写或翻页。'
-        : automatic ? '建议已生成，可核对后采用。' : '建议选项已标黄，未勾选；可核对后采用。';
+      state.textContent = review ? '需要人工核对，请在题目中自行选择；未自动填写或翻页。'
+        : automatic ? '正在填写建议答案…' : '建议选项已标黄，请在题目中自行选择。';
       if (automatic) {
         if (review) { halt('已暂停：这道题需要人工核对。'); return; }
         applyAnswer(suggestion);
@@ -333,11 +324,6 @@
   }
 
   solveButton.addEventListener('click',() => { if (run.enabled) halt(); void solve(false); });
-  applyButton.addEventListener('click',() => {
-    try { applyAnswer(suggestion,find('.accept').checked); state.textContent = '已填入当前题，未自动翻页或提交。'; }
-    catch (error) { halt(error.message); }
-  });
-  find('.accept').addEventListener('change',buttons);
   autoButton.addEventListener('click',async () => {
     await ready;
     if (busy || run.enabled) return;
@@ -381,7 +367,7 @@
     }
     if (highlightedFingerprint && highlightedFingerprint !== q.fingerprint) clearHighlights();
     if (lastFingerprint && lastFingerprint !== q.fingerprint && !busy) {
-      suggestion = null; result.textContent = ''; find('.review').hidden = true;
+      suggestion = null; result.textContent = '';
       state.textContent = '题目已变化，请重新解答。';
     }
     lastFingerprint = q.fingerprint;

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.4.4 — 2026-11-03
+
+- Remove the Apply suggestion button and its review checkbox. Single-question solving only highlights recommendations; users select answers in the original quiz controls.
+- Preserve manual-review notices and the separate automatic answering flow, including the Finish boundary.
+- Refresh usage instructions and the synthetic UI preview.
+
 ## v0.4.3 — 2026-11-03
 
 - Join checkbox/radio and option-text highlights by removing cell spacing in the suggested answer table and matching internal border colors.

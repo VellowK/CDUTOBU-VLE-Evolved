@@ -1,6 +1,6 @@
 {
   "name": "cdutobu-vle-evolved",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "CDUT OBU VLE userscript with an independent quizzes sidebar and DeepSeek-assisted answering.",
   "private": true,
   "license": "MIT",

@@ -2,9 +2,9 @@
 
 为 [CDUT OBU VLE](https://vle.zycdut.net/) 提供更清晰的测验侧栏和 DeepSeek 辅助答题体验的 Tampermonkey（油猴）脚本。
 
-[安装 v0.4.3](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases/download/v0.4.3/CDUTOBU-VLE-Evolved.user.js) · [查看 Release](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases) · [反馈问题](https://github.com/VellowK/CDUTOBU-VLE-Evolved/issues)
+[安装 v0.4.4](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases/download/v0.4.4/CDUTOBU-VLE-Evolved.user.js) · [查看 Release](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases) · [反馈问题](https://github.com/VellowK/CDUTOBU-VLE-Evolved/issues)
 
-> v0.4.3 为预览版，包含独立“自动答题”入口和连贯的黄色建议高亮。已通过本地模拟测试，尚未完成真实 API Key、油猴扩展和真实 VLE 的联合验证。
+> v0.4.4 为预览版，包含独立“自动答题”入口和连贯的黄色建议高亮。已通过本地模拟测试，尚未完成真实 API Key、油猴扩展和真实 VLE 的联合验证。
 
 ## 功能
 
@@ -12,7 +12,7 @@
 - **当前课程范围**：扫描 Home、Current modules 及其分页，按链接去重、按开放时间排序，过滤已关闭的测验，不扫描 All modules 或归档课程。
 - **DeepSeek 预设**：地址和模型已配好，填写自己的 API Key 即可使用。
 - **单题解答**：读取当前题干、选项和图片附件，显示答案建议、简短解释和模型自报置信度；建议选项的勾选框与文字背景连成黄色整块，不改变勾选。重新解答或切换题目时清除旧高亮。
-- **单选与多选**：按真实控件分组识别题型；多选可以选择一项、多项或全部，采用建议时同步勾选与取消勾选，并核对完整答案集合。
+- **单选与多选**：按真实控件分组识别题型；单题模式仅提示，由用户自行勾选。自动答题可以选择一项、多项或全部，并核对完整答案集合。
 - **自动答题**：独立按钮，手动开启后逐题求解、选择并进入下一题，跨页面恢复；运行期间显示“自动答题中…”，遇到歧义、低置信度或错误时暂停。
 - **保留最终确认**：不会自动开始测验；连续模式在 Finish 前停止，由用户核对并正式提交。
 
@@ -21,7 +21,7 @@
 ## 安装
 
 1. 在浏览器安装 [Tampermonkey](https://www.tampermonkey.net/)。
-2. 点击上方“安装 v0.4.3”，在油猴安装页检查匹配网站和权限并安装。
+2. 点击上方“安装 v0.4.4”，在油猴安装页检查匹配网站和权限并安装。
 3. 如果浏览器只下载了 `.user.js` 文件，在油猴中新建脚本，将文件全部内容粘贴后保存。
 4. 打开并自行登录 `https://vle.zycdut.net/`，刷新页面。
 
@@ -31,13 +31,13 @@
 
 1. 在侧栏 **DeepSeek 助手 → API 设置** 中填写自己的 [DeepSeek API Key](https://platform.deepseek.com/api_keys)，点击“保存 Key”。
 2. 自行打开测验并开始尝试。
-3. 点击 **解答当前题目** 获取建议并将建议选项背景标黄（多选逐项标黄），检查后点击 **采用建议** 填入当前题；这个按钮不会自动翻页。
-4. 或点击独立的 **自动答题**，自动解答、填写并点击 Next，继续处理后续题目。需要中断时点击 **停止**。请求或翻页期间禁用重复启动及手动采用；异步翻页等待最多 10 秒，失败时停止。
+3. 点击 **解答当前题目** 获取建议并将建议选项背景标黄（多选逐项标黄），核对后在题目中自行勾选；单题模式不填写、不翻页，没有“采用建议”按钮。
+4. 或点击独立的 **自动答题**，自动解答、填写并点击 Next，继续处理后续题目。需要中断时点击 **停止**。请求或翻页期间禁用重复启动；异步翻页等待最多 10 秒，失败时停止。
 5. 最后一题填写后，核对答案并自行点击网站的 **Finish**。
 
 预设为官方 `https://api.deepseek.com/chat/completions` 和 `deepseek-flash`，无需填写接口地址或模型。模型与图片输入格式依据 [DeepSeek 官方文档](https://api-docs.deepseek.com/)、[Vision 文档](https://api-docs.deepseek.com/guides/vision/)，核对日期为 2026-10-23。API 调用使用用户自己的额度并产生费用，本项目不提供 Key。
 
-置信度低于 85%、模型标记需要复核、答案格式异常或页面状态变化时，连续模式会停止。如果模型给出了可供复核的暂定答案，可以勾选“我已核对这道题”后采用；没有确定答案时需自行选择。模型自报置信度不等于正确率保证。
+置信度低于 85%、模型标记需要复核、答案格式异常或页面状态变化时，连续模式会停止。暂定建议需要人工核对并在题目中自行选择，没有额外的复核勾选框。模型自报置信度不等于正确率保证。
 
 ## 支持范围与限制
 
