@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CDUTOBU VLE Evolved
 // @namespace    local.vle.ui
-// @version      0.5.0
+// @version      0.5.1
 // @description  Current quizzes sidebar and DeepSeek-assisted answering.
 // @author       VellowK
 // @license      MIT
@@ -93,9 +93,33 @@
 
   const origin = location.origin;
   const maxPages = 60;
+  const cacheKey = 'vle-upcoming-quizzes-cache-v1';
   let running = false;
   let lastItems = [];
   let lastProblems = [];
+  let hasCache = false;
+
+  function readCache() {
+    if (typeof GM_getValue !== 'function') return [];
+    try {
+      const cached = GM_getValue(cacheKey, null);
+      if (!Array.isArray(cached)) return [];
+      hasCache = true;
+      return cached.filter(q => q && typeof q === 'object'
+        && typeof q.url === 'string' && /^https:\/\/vle\.zycdut\.net\/quiz\/[^/?#]+\/?$/.test(q.url)
+        && typeof q.title === 'string' && typeof q.course === 'string'
+        && typeof q.opens === 'string' && typeof q.closes === 'string'
+        && (q.openAt === null || Number.isFinite(q.openAt))
+        && (q.closeAt === null || Number.isFinite(q.closeAt))
+        && typeof q.always === 'boolean' && typeof q.closed === 'boolean'
+        && typeof q.notYetOpen === 'boolean');
+    } catch { return []; }
+  }
+
+  function saveCache(items) {
+    if (typeof GM_setValue !== 'function') return;
+    try { GM_setValue(cacheKey, items); } catch {}
+  }
 
   function siteURL(raw, base) {
     try {
@@ -198,15 +222,22 @@
       }
       list.append(item);
     }
-    note.textContent = lastProblems.length ? '部分页面未读取成功，列表可能不完整。请稍后刷新。'
+    note.textContent = lastProblems.length ? '部分页面未读取成功，列表可能不完整。正在显示已保存的结果。'
       : '仅 Current modules 与 Home；时间按北京时间。';
+  }
+
+  lastItems = readCache();
+  if (hasCache) {
+    render();
+    note.textContent = '已显示上次结果，正在后台检查新增测验…';
   }
 
   async function scan() {
     if (running) return;
     running = true;
     refresh.setAttribute('aria-disabled','true');
-    status.textContent = '正在检查测验…';
+    if (!hasCache) status.textContent = '正在检查测验…';
+    else note.textContent = '已显示上次结果，正在后台检查新增测验…';
     const found = new Map();
     const problems = [];
     const queue = [];
@@ -239,9 +270,29 @@
       if (queue.some(entry => !visited.has(entry.url))) problems.push('分页数量超过上限');
     } catch { problems.push('无法读取 Home'); }
     finally {
-      lastItems = [...found.values()];
+      const existing = new Set(lastItems.map(q => q.url));
+      const additions = [...found.values()].filter(q => !existing.has(q.url));
       lastProblems = problems;
-      render();
+      if (additions.length) {
+        // Preserve the visible list and append only quizzes not seen before.
+        lastItems = [...lastItems, ...additions];
+        saveCache(lastItems);
+        hasCache = true;
+        render();
+        if (additions.length) status.textContent += ` · 新增 ${additions.length} 个`;
+      } else if (!hasCache && !problems.length) {
+        // Save a successful empty first scan so later page loads can show it immediately.
+        lastItems = [...found.values()];
+        saveCache(lastItems);
+        hasCache = true;
+        render();
+      } else if (!hasCache) {
+        render();
+      } else {
+        // No new quizzes: leave the cached list untouched and avoid a redraw.
+        note.textContent = problems.length ? '已显示上次结果；部分页面未读取成功，稍后会继续检查。'
+          : '列表无新增，已保留上次结果。';
+      }
       running = false;
       refresh.setAttribute('aria-disabled','false');
     }
@@ -554,13 +605,8 @@ const VLEDeepSeek = (() => {
   }
 
   function mountAI() {
-    const panel = document.getElementById('vle-upcoming-quizzes-skeleton');
-    if (panel?.parentElement) {
-      if (panel.nextElementSibling !== host) panel.after(host);
-    } else {
-      const region = document.querySelector('#sidebar-first .region-sidebar-first');
-      if (region && host.parentElement !== region) region.append(host);
-    }
+    const region = document.querySelector('#sidebar-first .region-sidebar-first');
+    if (region && region.firstElementChild !== host) region.prepend(host);
     syncNativeStyle();
   }
 

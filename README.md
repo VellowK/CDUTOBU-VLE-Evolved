@@ -2,15 +2,15 @@
 
 为 [CDUT OBU VLE](https://vle.zycdut.net/) 提供更清晰的测验侧栏和 DeepSeek 辅助答题体验的 Tampermonkey（油猴）脚本。
 
-[安装 v0.5.0](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases/download/v0.5.0/CDUTOBU-VLE-Evolved.user.js) · [查看 Release](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases) · [反馈问题](https://github.com/VellowK/CDUTOBU-VLE-Evolved/issues)
+[安装 v0.5.1](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases/download/v0.5.1/CDUTOBU-VLE-Evolved.user.js) · [查看 Release](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases) · [反馈问题](https://github.com/VellowK/CDUTOBU-VLE-Evolved/issues)
 
 > v0.5.0 为预览版，新增已观察到的 Drupal 单输入框填空题支持。已通过本地模拟测试，尚未完成真实 API Key、油猴扩展和真实 VLE 的联合验证。
 
 ## 功能
 
-- **独立的 Upcoming Quizzes 面板**：直接使用原站的模块、标题、正文及链接样式，保留原分类和 Upcoming deadlines；没有 deadline 时测验面板仍显示。“刷新列表”采用与 All modules 一样的右对齐文字链接。
+- **独立的 Upcoming Quizzes 面板**：直接使用原站的模块、标题、正文及链接样式，保留原分类和 Upcoming deadlines；没有 deadline 时测验面板仍显示。先显示上次保存的列表，再后台检查新增测验；只有发现新测验时才更新列表。“刷新列表”采用与 All modules 一样的右对齐文字链接。
 - **当前课程范围**：扫描 Home、Current modules 及其分页，按链接去重、按开放时间排序，过滤已关闭的测验，不扫描 All modules 或归档课程。
-- **DeepSeek 预设**：地址和模型已配好，填写自己的 API Key 即可使用。
+- **DeepSeek 预设**：地址和模型已配好，填写自己的 API Key 即可使用；助手固定在左侧栏最上方。
 - **单题解答**：读取当前题干、选项和图片附件，显示答案建议、简短解释和模型自报置信度；建议选项的勾选框与文字背景连成黄色整块，不改变勾选。重新解答或切换题目时清除旧高亮。
 - **单选与多选**：按真实控件分组识别题型；单题模式仅提示，由用户自行勾选。自动答题可以选择一项、多项或全部，并核对完整答案集合。
 - **填空题**：支持每题一个单行文本框，包括多个空共用一个输入框。单题模式只显示文字建议并将输入框标黄；自动模式按原文填写、触发输入事件、核对后翻页。不会把填空题错误地当成选择题。
@@ -22,7 +22,7 @@
 ## 安装
 
 1. 在浏览器安装 [Tampermonkey](https://www.tampermonkey.net/)。
-2. 点击上方“安装 v0.5.0”，在油猴安装页检查匹配网站和权限并安装。
+2. 点击上方“安装 v0.5.1”，在油猴安装页检查匹配网站和权限并安装。
 3. 如果浏览器只下载了 `.user.js` 文件，在油猴中新建脚本，将文件全部内容粘贴后保存。
 4. 打开并自行登录 `https://vle.zycdut.net/`，刷新页面。
 

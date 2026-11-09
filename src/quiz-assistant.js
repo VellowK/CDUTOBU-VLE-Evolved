@@ -119,13 +119,8 @@
   }
 
   function mountAI() {
-    const panel = document.getElementById('vle-upcoming-quizzes-skeleton');
-    if (panel?.parentElement) {
-      if (panel.nextElementSibling !== host) panel.after(host);
-    } else {
-      const region = document.querySelector('#sidebar-first .region-sidebar-first');
-      if (region && host.parentElement !== region) region.append(host);
-    }
+    const region = document.querySelector('#sidebar-first .region-sidebar-first');
+    if (region && region.firstElementChild !== host) region.prepend(host);
     syncNativeStyle();
   }
 

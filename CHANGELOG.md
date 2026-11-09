@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5.1 — 2026-11-09
+
+- Show the last saved Upcoming Quizzes list immediately and check for new quizzes in the background.
+- Persist quiz list data in Tampermonkey storage; append and redraw only when a previously unseen quiz is found, and report partial scan failures without replacing the cached list.
+- Place the DeepSeek Assistant at the top of the main left sidebar, above the site's existing modules.
+
 ## v0.5.0 — 2026-11-03
 
 - Recognize observed Drupal short-answer containers with one single-line answer field, including several blanks sharing that field.
