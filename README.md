@@ -2,7 +2,7 @@
 
 为 [CDUT OBU VLE](https://vle.zycdut.net/) 提供更清晰的测验侧栏和 DeepSeek 辅助答题体验的 Tampermonkey（油猴）脚本。
 
-[安装 v0.5.1](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases/download/v0.5.1/CDUTOBU-VLE-Evolved.user.js) · [查看 Release](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases) · [反馈问题](https://github.com/VellowK/CDUTOBU-VLE-Evolved/issues)
+[安装 v0.5.2](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases/download/v0.5.2/CDUTOBU-VLE-Evolved.user.js) · [查看 Release](https://github.com/VellowK/CDUTOBU-VLE-Evolved/releases) · [反馈问题](https://github.com/VellowK/CDUTOBU-VLE-Evolved/issues)
 
 > v0.5.0 为预览版，新增已观察到的 Drupal 单输入框填空题支持。已通过本地模拟测试，尚未完成真实 API Key、油猴扩展和真实 VLE 的联合验证。
 
@@ -14,7 +14,7 @@
 - **单题解答**：读取当前题干、选项和图片附件，显示答案建议、简短解释和模型自报置信度；建议选项的勾选框与文字背景连成黄色整块，不改变勾选。重新解答或切换题目时清除旧高亮。
 - **单选与多选**：按真实控件分组识别题型；单题模式仅提示，由用户自行勾选。自动答题可以选择一项、多项或全部，并核对完整答案集合。
 - **填空题**：支持每题一个单行文本框，包括多个空共用一个输入框。单题模式只显示文字建议并将输入框标黄；自动模式按原文填写、触发输入事件、核对后翻页。不会把填空题错误地当成选择题。
-- **自动答题**：独立按钮，手动开启后逐题求解、选择并进入下一题，跨页面恢复；运行期间显示“自动答题中…”，遇到歧义、低置信度或错误时暂停。
+- **自动答题**：独立按钮，手动开启后逐题求解、选择并进入下一题，跨页面恢复；默认遇到歧义或低置信度时暂停。可选托管模式会继续使用低置信度建议，低于 30% 时为选择题随机选一个选项；最后仍停在 Finish 前。
 - **保留最终确认**：不会自动开始测验；连续模式在 Finish 前停止，由用户核对并正式提交。
 
 ![本地模拟预览：合成课程和模拟模型回答](docs/images/deepseek-preview.png)
@@ -22,7 +22,7 @@
 ## 安装
 
 1. 在浏览器安装 [Tampermonkey](https://www.tampermonkey.net/)。
-2. 点击上方“安装 v0.5.1”，在油猴安装页检查匹配网站和权限并安装。
+2. 点击上方“安装 v0.5.2”，在油猴安装页检查匹配网站和权限并安装。
 3. 如果浏览器只下载了 `.user.js` 文件，在油猴中新建脚本，将文件全部内容粘贴后保存。
 4. 打开并自行登录 `https://vle.zycdut.net/`，刷新页面。
 

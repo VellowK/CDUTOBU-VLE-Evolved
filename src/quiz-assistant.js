@@ -3,7 +3,9 @@
   if (window.top !== window.self || document.getElementById('vle-deepseek-assistant')) return;
   const provider = VLEDeepSeek;
   const keyName = 'vle-deepseek-api-key';
+  const hostedName = 'vle-deepseek-hosted-mode';
   const confidenceFloor = 0.85;
+  const hostedRandomFloor = 0.30;
   const supportedImage = /\.(?:png|jpe?g|gif|webp)$/i;
   const highlightClass = 'vle-ai-suggested-option';
   const highlightTableClass = 'vle-ai-suggestion-table';
@@ -36,6 +38,7 @@
     :host { display:block; }
     * { box-sizing:border-box; } h2 {margin:0}
     p {margin:8px 0;overflow-wrap:anywhere} button,input{font:inherit}
+    .hosted-row{display:flex;align-items:center;gap:6px;margin:2px 0 8px}.hosted-row label{display:inline-flex;align-items:center;gap:5px;cursor:pointer}.hosted-row input{margin:0}.info{display:inline-grid;place-items:center;width:16px;height:16px;border:1px solid #888;border-radius:50%;font-size:12px;line-height:1;cursor:help;opacity:.8}.info:focus{outline:2px solid #555}
     button {padding:5px 8px;margin:4px 3px 4px 0;border:1px solid #bbb;background:#fafafa;color:#222;cursor:pointer}
     button:disabled{opacity:.5;cursor:default} button.primary{background:var(--vle-link-color,#555);color:#fff;border-color:var(--vle-link-color,#555)}
     input[type=password]{width:100%;padding:5px;border:1px solid #bbb;background:white;color:#222}
@@ -49,6 +52,8 @@
   <div><button class="solve" type="button">解答当前题目</button></div>
   <div><button class="auto primary" type="button">自动答题</button>
     <button class="stop" type="button" disabled>停止</button></div>
+  <div class="hosted-row"><label><input class="hosted" type="checkbox"> 托管模式</label>
+    <span class="info" title="托管模式开启后，自动答题遇到置信度低于 85% 的答案会继续使用模型建议。低于 30% 时，选择题会随机选一个选项；填空题继续使用模型给出的文字答案。没有可用答案或题目结构不受支持时仍会暂停。最后一题仍会停在 Finish 前，不会替你提交。" aria-label="托管模式说明" tabindex="0">ⓘ</span></div>
   <p class="small">单题解答显示建议并标黄，请自行作答；自动答题会填写并进入下一题，到 Finish 前停止。</p>
   <p class="result"></p>
   <details><summary>API 设置</summary>
@@ -64,6 +69,7 @@
   const solveButton = find('.solve');
   const autoButton = find('.auto');
   const stopButton = find('.stop');
+  const hostedCheckbox = find('.hosted');
   const keyInput = find('.key');
   let busy = false;
   let controller;
@@ -87,6 +93,7 @@
     if (canContinue) GM_saveTab(tabData);
   }
   function getKey() { return gmAvailable ? GM_getValue(keyName,'') : ''; }
+  function getHostedMode() { try { return gmAvailable && GM_getValue(hostedName,false) === true; } catch { return false; } }
   function keyState() { find('.saved').textContent = getKey() ? '已保存 API Key（不回显）。' : '尚未配置 API Key。'; }
   function quizPath() { return location.pathname.match(/^\/node\/\d+\/take(?:\/\d+)?\/?$/)?.[0].match(/^\/node\/\d+\/take/)?.[0] || ''; }
   function shown(el) { return !!el && !el.disabled && !!el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden'; }
@@ -214,6 +221,7 @@
     autoButton.disabled = busy || run.enabled || !gmAvailable || !canContinue || !current;
     autoButton.textContent = run.enabled ? '自动答题中…' : '自动答题';
     stopButton.disabled = !busy && !run.enabled;
+    hostedCheckbox.disabled = busy || run.enabled || !gmAvailable;
   }
 
   function halt(message) {
@@ -245,7 +253,7 @@
 
   function applyAnswer(item) {
     if (!item || (item.question.type === 'short' ? !item.answer.text : !item.answer.indices.length)) throw new Error('没有可填写的答案。');
-    if (item.answer.needsReview || item.answer.confidence < confidenceFloor) {
+    if (!item.hosted && (item.answer.needsReview || item.answer.confidence < confidenceFloor)) {
       throw new Error('这道题需要先人工核对。');
     }
     const current = question();
@@ -253,6 +261,16 @@
     const isCurrent = () => question().fingerprint === current.fingerprint;
     if (current.type === 'short') VLEShortAnswer.apply(current.field,item.answer.text,shown,isCurrent);
     else VLEChoices.apply(current.options,item.answer.indices,current.type,shown,isCurrent);
+  }
+
+  function hostedAnswer(q, answer) {
+    if (answer.confidence < hostedRandomFloor && q.type !== 'short') {
+      const index = Math.floor(Math.random() * q.options.length);
+      return {...answer,indices:[index],index,needsReview:false,
+        reason:`托管模式：置信度低于 ${Math.round(hostedRandomFloor*100)}%，已随机选择一个选项。`};
+    }
+    if (q.type === 'short' ? !answer.text : !answer.indices.length) return null;
+    return {...answer,needsReview:false};
   }
 
   async function nextQuestion(item) {
@@ -318,7 +336,10 @@
       if (current.fingerprint !== q.fingerprint) throw new Error('题目已变化，已丢弃旧回答。');
       if (q.type === 'short' ? current.field.value !== q.field.value
         : current.options.some((o,i) => o.checked !== q.options[i].checked)) throw new Error('检测到你手动修改了答案，未覆盖你的输入或选择。');
-      const answer = provider.parse(response,q.options.length,q.type,q.maxLength);
+      let answer = provider.parse(response,q.options.length,q.type,q.maxLength);
+      const hosted = automatic && run.hosted === true;
+      if (hosted) answer = hostedAnswer(q,answer);
+      if (!answer) throw new Error('托管模式下没有可填写的答案，已暂停。');
       suggestion = {question:q,answer};
       if (!automatic) highlightSuggestion(current,answer);
       const hasAnswer = q.type === 'short' ? !!answer.text : !!answer.indices.length;
@@ -326,12 +347,12 @@
       const recommendation = q.type === 'short' ? '填空建议：'+answer.text
         : (q.type === 'multiple' ? '建议（多选）：\n' : '建议：')+answer.indices.map(index => q.options[index].text).join('\n');
       result.textContent = `${hasAnswer ? recommendation : '未给出确定答案'}\n置信度：${Math.round(answer.confidence*100)}%\n${answer.reason}`;
-      state.textContent = review ? '需要人工核对，请在题目中自行作答；未自动填写或翻页。'
-        : automatic ? '正在填写建议答案…' : q.type === 'short' ? '填空建议已生成，输入框已标黄，请自行填写。'
+      state.textContent = review && !hosted ? '需要人工核对，请在题目中自行作答；未自动填写或翻页。'
+        : automatic ? '正在填写托管模式答案并继续…' : q.type === 'short' ? '填空建议已生成，输入框已标黄，请自行填写。'
         : '建议选项已标黄，请在题目中自行选择。';
       if (automatic) {
-        if (review) { halt('已暂停：这道题需要人工核对。'); return; }
-        applyAnswer(suggestion);
+        if (review && !hosted) { halt('已暂停：这道题需要人工核对。'); return; }
+        applyAnswer({...suggestion,hosted});
         busy = false;
         buttons();
         await nextQuestion(suggestion);
@@ -349,11 +370,15 @@
     await ready;
     if (busy || run.enabled) return;
     if (!quizPath()) { state.textContent = '未识别到本次测验路径，不能连续解答。'; return; }
-    putRun({enabled:true,quizPath:quizPath(),steps:0,lastFingerprint:'',phase:'solving'});
+    putRun({enabled:true,hosted:hostedCheckbox.checked,quizPath:quizPath(),steps:0,lastFingerprint:'',phase:'solving'});
     buttons();
     void solve(true);
   });
   stopButton.addEventListener('click',() => halt('已停止，未继续翻页或提交。'));
+  hostedCheckbox.checked = getHostedMode();
+  hostedCheckbox.addEventListener('change',() => {
+    if (gmAvailable) GM_setValue(hostedName,hostedCheckbox.checked);
+  });
   find('.save').addEventListener('click',() => {
     if (!gmAvailable) { state.textContent = '请通过油猴安装脚本。'; return; }
     const key = keyInput.value.trim();
@@ -374,6 +399,7 @@
 
   function pageChanged() {
     mountAI();
+    hostedCheckbox.disabled = busy || run.enabled || !gmAvailable;
     let q;
     try { q = question(); }
     catch (error) {

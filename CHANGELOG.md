@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.5.2 — 2026-11-09
+
+- Add an opt-in Hosted mode checkbox with an information tooltip and persist its setting in Tampermonkey storage.
+- In Hosted mode, continue automatic answering with available model suggestions below the normal confidence threshold; below 30%, randomly choose one option for choice questions.
+- For short-answer questions, continue only with non-empty model text; never generate random fill-in text. Keep pausing when no usable answer is available or the question is unsupported.
+- Preserve manual mode behavior and the stop-before-Finish boundary.
+
 ## v0.5.1 — 2026-11-09
 
 - Show the last saved Upcoming Quizzes list immediately and check for new quizzes in the background.
